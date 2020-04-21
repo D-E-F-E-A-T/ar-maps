@@ -12,13 +12,44 @@
         android:id="@+id/textureView"
         />
 
-    <Button
-        android:layout_width="wrap_content"
+    <ImageView
+        android:id="@+id/arrow"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="142dp"
+        android:layout_marginEnd="168dp"
+        android:src="@drawable/red_arrow" />
+
+    <EditText
+        android:id="@+id/debugLatLng"
+        android:layout_width="288dp"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="QUIT"
-        android:layout_below="@+id/textureView"
-        android:layout_centerHorizontal="true"
-        />
+        android:layout_alignBottom="@+id/textureView"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="72dp"
+        android:layout_marginEnd="51dp"
+        android:layout_marginBottom="-89dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:text="debug location"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/debugRotation"
+        android:layout_width="288dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/textureView"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="68dp"
+        android:layout_marginEnd="55dp"
+        android:layout_marginBottom="-162dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:text="debug location"
+        android:textSize="16sp" />
 
 </RelativeLayout>

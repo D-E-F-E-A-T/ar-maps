@@ -5,6 +5,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -20,6 +21,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -72,46 +74,42 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public void onLocationChanged(Location location) {
                     LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    mMap.addMarker(new MarkerOptions().position(latLng).title("User"));
+                    checkDestinationReached(latLng);
+                    mMap.addMarker(new MarkerOptions()
+                            .position(latLng)
+                            .title("User")
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
                 }
 
                 @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) {
-
-                }
+                public void onStatusChanged(String provider, int status, Bundle extras) { }
 
                 @Override
-                public void onProviderEnabled(String provider) {
-
-                }
+                public void onProviderEnabled(String provider) { }
 
                 @Override
-                public void onProviderDisabled(String provider) {
-
-                }
+                public void onProviderDisabled(String provider) { }
             });
         } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
                     LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    mMap.addMarker(new MarkerOptions().position(latLng).title("User"));
+                    checkDestinationReached(latLng);
+                    mMap.addMarker(new MarkerOptions()
+                            .position(latLng)
+                            .title("User")
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
                 }
 
                 @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) {
-
-                }
+                public void onStatusChanged(String provider, int status, Bundle extras) { }
 
                 @Override
-                public void onProviderEnabled(String provider) {
-
-                }
+                public void onProviderEnabled(String provider) { }
 
                 @Override
-                public void onProviderDisabled(String provider) {
-
-                }
+                public void onProviderDisabled(String provider) { }
             });
         }
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -311,13 +309,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // reached the NOA Building A
         if ((userLatLng.latitude >= 30.291 && userLatLng.latitude <= 30.291) &&
             (userLatLng.longitude >= -97.737 && userLatLng.longitude <= -97.737)) {
-            setContentView(R.layout.activity_destination);
+
+            Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+            startActivity(startIntent);
+
         } else if ((userLatLng.latitude >= 30.288 && userLatLng.latitude <= 30.288) &&
                 (userLatLng.longitude >= -97.73 && userLatLng.longitude <= -97.73)) {
-            setContentView(R.layout.activity_destination);
+
+            Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+            startActivity(startIntent);
+
         } else if ((userLatLng.latitude >= 30.284 && userLatLng.latitude <= 30.284) &&
                 ( userLatLng.longitude >= -97.740 && userLatLng.longitude <= -97.740)) {
-            setContentView(R.layout.activity_destination);
+
+            Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
+            startActivity(startIntent);
         }
     }
 

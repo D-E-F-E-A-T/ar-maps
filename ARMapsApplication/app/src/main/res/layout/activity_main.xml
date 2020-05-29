@@ -20,39 +20,25 @@
         app:layout_constraintVertical_bias="0.111" />
 
     <Button
-        android:id="@+id/location1Btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="364dp"
-        android:layout_marginEnd="16dp"
-        android:text="2D Location "
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title" />
-
-    <Button
-        android:id="@+id/arBtn"
+        android:id="@+id/startBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:text="3D (AR) Location"
+        android:layout_marginBottom="204dp"
+        android:text="Start"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.491"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/location1Btn"
-        app:layout_constraintVertical_bias="0.248" />
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/textView"
         android:layout_width="323dp"
         android:layout_height="232dp"
+        android:layout_marginTop="32dp"
         android:text='You will be given directions to reach a specific destination. Please follow the provided route until you reach your destination. The experiment will begin when you press the "Start" button.  '
         android:textSize="24sp"
-        app:layout_constraintBottom_toTopOf="@+id/location1Btn"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/title" />

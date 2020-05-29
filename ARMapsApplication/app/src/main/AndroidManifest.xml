@@ -30,15 +30,15 @@
             android:name="com.google.ar.core"
             android:value="required" />
 
-        <activity android:name=".MapsActivity" android:label="@string/title_activity_maps"> </activity>
-        <activity android:name=".ArActivity2"></activity>
-        <activity android:name=".DestinationActivity"></activity>
+        <activity android:name=".MapsActivity" android:screenOrientation="portrait" android:label="@string/title_activity_maps"> </activity>
+        <activity android:name=".ArActivity2" android:screenOrientation="portrait"></activity>
+        <activity android:name=".DestinationActivity" android:screenOrientation="portrait"></activity>
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
         </activity>
     </application>

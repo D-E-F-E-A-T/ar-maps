@@ -6,16 +6,26 @@ import androidx.fragment.app.FragmentActivity;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
 
+import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -23,29 +33,46 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.maps.GeoApiContext;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Random;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     // variables
+    private int destNum = 0;
+    private boolean reached = false;
+
     private GoogleMap mMap;
     //    private Location userLocation;
     private LocationManager locationManager;
+    private Marker userMarker;
+    private Marker destinationMarker;
+    private String destinationName;
 
     private LatLng[] destinations;
-    private LatLng gdcBuilding = new LatLng(30.286268, -97.736844);
+
+    private LatLng startLocation = new LatLng(30.286285, -97.737116);
+
+    private LatLng northOfficeBuilding = new LatLng(30.291263, -97.737619);
+    private LatLng texasExes = new LatLng(30.284176, -97.734424);
+    private LatLng parlinHall = new LatLng(30.284915, -97.740109);
 
     private FusedLocationProviderClient mFusedLocationClient;
+    LocationRequest locationRequest;
 
     private GeoApiContext mGeoApiContext = null;
 
@@ -57,66 +84,113 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         fillDestinations();
 
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    Activity#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for Activity#requestPermissions for more details.
-            return;
-        }
-
-        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, new LocationListener() {
-                @Override
-                public void onLocationChanged(Location location) {
-                    LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    checkDestinationReached(latLng);
-                    mMap.addMarker(new MarkerOptions()
-                            .position(latLng)
-                            .title("User")
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-                }
-
-                @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) { }
-
-                @Override
-                public void onProviderEnabled(String provider) { }
-
-                @Override
-                public void onProviderDisabled(String provider) { }
-            });
-        } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, new LocationListener() {
-                @Override
-                public void onLocationChanged(Location location) {
-                    LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    checkDestinationReached(latLng);
-                    mMap.addMarker(new MarkerOptions()
-                            .position(latLng)
-                            .title("User")
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-                }
-
-                @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) { }
-
-                @Override
-                public void onProviderEnabled(String provider) { }
-
-                @Override
-                public void onProviderDisabled(String provider) { }
-            });
-        }
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+//        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+//        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//            return;
+//        }
+//
+//        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+//            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 0.01f, new LocationListener() {
+//                @Override
+//                public void onLocationChanged(Location location) {
+//                    LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+//                    checkDestinationReached(latLng);
+//
+//                    if (userMarker != null) {
+//                        userMarker.remove();
+//                    }
+//
+//                    userMarker = mMap.addMarker(new MarkerOptions()
+//                            .position(latLng)
+//                            .title("User")
+//                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+//                }
+//
+//                @Override
+//                public void onStatusChanged(String provider, int status, Bundle extras) { }
+//
+//                @Override
+//                public void onProviderEnabled(String provider) { }
+//
+//                @Override
+//                public void onProviderDisabled(String provider) { }
+//            });
+//        } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+//            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 0.01f, new LocationListener() {
+//                @Override
+//                public void onLocationChanged(Location location) {
+//                    LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+//                    checkDestinationReached(latLng);
+//
+//                    if (userMarker != null) {
+//                        userMarker.remove();
+//                    }
+//
+//                    userMarker = mMap.addMarker(new MarkerOptions()
+//                            .position(latLng)
+//                            .title("User")
+//                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+//                }
+//
+//                @Override
+//                public void onStatusChanged(String provider, int status, Bundle extras) { }
+//
+//                @Override
+//                public void onProviderEnabled(String provider) { }
+//
+//                @Override
+//                public void onProviderDisabled(String provider) { }
+//            });
+//        }
 
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        mFusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                            if (!reached)
+                                checkDestinationReached(latLng);
+
+                            if (userMarker != null) {
+                                userMarker.remove();
+                            }
+
+                            userMarker = mMap.addMarker(new MarkerOptions()
+                                    .position(latLng)
+                                    .title("User")
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                        }
+                    }
+                });
+
+        createLocationRequest();
+        mFusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+
+                Location location = locationResult.getLastLocation();
+                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                if (!reached)
+                    checkDestinationReached(latLng);
+
+                if (userMarker != null) {
+                    userMarker.remove();
+                }
+
+                userMarker = mMap.addMarker(new MarkerOptions()
+                        .position(latLng)
+                        .title("User")
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            }
+        }, getMainLooper());
 
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
@@ -126,224 +200,161 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    protected void createLocationRequest() {
+        locationRequest = LocationRequest.create();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        try {
+            // Style the Google Maps
+            boolean success = mMap.setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(
+                            this, R.raw.maps_style));
+
+            if (!success) {
+                Log.e("MapsActivityRaw", "Style parsing failed.");
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.e("MapsActivityRaw", "Can't find style.", e);
+        }
+
+
         // Randomly pick a location
-        Random r = new Random();
-        int destNum = r.nextInt(3);
+//        Random r = new Random();
+//        int destNum = r.nextInt(3);
         LatLng finalDest = destinations[destNum];
 
-        if (destNum == 0)
+        if (destNum == 0) {
             createNOApolylines();
-        else if (destNum == 1)
-            createLawSchoolPolylines();
-        else
-            createHarryRansomPolylines();
+            destinationName = "Destination A";
+        } else if (destNum == 1) {
+            createTexasExesPolylines();
+            destinationName = "Destination B";
+        } else {
+            createParlinPolylines();
+            destinationName = "Destination C";
+        }
 
-//        getLastKnownLocation();
+        userMarker = mMap.addMarker(new MarkerOptions().position(startLocation).title("Start"));
+        destinationMarker = mMap.addMarker(new MarkerOptions().position(finalDest).title(destinationName));
+        destinationMarker.showInfoWindow();
 
-        mMap.addMarker(new MarkerOptions().position(gdcBuilding).title("Start"));
-        mMap.addMarker(new MarkerOptions().position(finalDest).title("Marker"));
+
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(finalDest, 15));
     }
 
     private void fillDestinations() {
         Log.d("MapsActivity", "fillDestinations: called");
-        LatLng northOfficeBuilding = new LatLng(30.291263, -97.737619);
-        LatLng lawSchoolBuilding = new LatLng(30.288391, -97.730813);
-        LatLng harryRansomCenter = new LatLng(30.284295, -97.740922);
 
         destinations = new LatLng[3];
         destinations[0] = northOfficeBuilding;
-        destinations[1] = lawSchoolBuilding;
-        destinations[2] = harryRansomCenter;
+        destinations[1] = texasExes;
+        destinations[2] = parlinHall;
     }
 
     private void createNOApolylines() {
         ArrayList<LatLng> vectors = new ArrayList<LatLng>();
-        vectors.add(new LatLng(30.286285, -97.737116)); //0
-        vectors.add(new LatLng(30.287727, -97.736964)); //1
-        vectors.add(new LatLng(30.287813, -97.737610)); //2
-        vectors.add(new LatLng(30.288021, -97.737707)); //3
-        vectors.add(new LatLng( 30.288029, -97.738094)); //4
-        vectors.add(new LatLng(30.288270, -97.738065)); //5
-        vectors.add(new LatLng(30.288351, -97.738113)); //6
-        vectors.add(new LatLng(30.288966, -97.738051)); //7
-        vectors.add(new LatLng(30.289107,-97.738140)); //8
-        vectors.add(new LatLng (30.289510, -97.738110)); //9
+        vectors.add(new LatLng(30.28953, -97.73673)); //1
+        vectors.add(new LatLng(30.289646, -97.738039)); //2
+        vectors.add(new LatLng(30.2906, -97.73795)); //3
+        vectors.add(new LatLng(30.2906, -97.73783)); //4
+        vectors.add(new LatLng(30.2914, -97.73775)); //5
+        vectors.add(new LatLng(30.2914, -97.73775)); //6
 
         Polyline line = mMap.addPolyline(new PolylineOptions()
-            .add( gdcBuilding, vectors.get(0))
+            .add( startLocation, vectors.get(0))
             .add(vectors.get(0), vectors.get(1))
             .add(vectors.get(1), vectors.get(2))
             .add(vectors.get(2), vectors.get(3))
             .add(vectors.get(3), vectors.get(4))
             .add(vectors.get(4), vectors.get(5))
-            .add(vectors.get(5), vectors.get(6))
-            .add(vectors.get(6), vectors.get(7))
-            .add(vectors.get(7), vectors.get(8))
-            .add(vectors.get(8), vectors.get(9))
-            .width(7)
+            .width(15)
             .color(Color.RED)
             );
     }
 
-    private void createHarryRansomPolylines() {
+    private void createTexasExesPolylines() {
         ArrayList<LatLng> vectors = new ArrayList<LatLng>();
-        vectors.add(new LatLng(30.286285, -97.737116)); //0
-        vectors.add(new LatLng(30.284742, -97.737287)); //1
-        vectors.add(new LatLng(30.284800, -97.738043)); //2
-        vectors.add(new LatLng(30.284904,-97.738419)); //3
-        vectors.add(new LatLng(30.284971, -97.739283)); //4
-        vectors.add(new LatLng(30.284093, -97.739358)); //5
-        vectors.add(new LatLng(30.284128, -97.739790)); //6
-        vectors.add(new LatLng(30.283906, -97.739857)); //7
-        vectors.add(new LatLng(30.283992, -97.740941)); //8
-        vectors.add(new LatLng(30.284295, -97.740922)); //9
+        vectors.add(new LatLng(30.285490, -97.737206)); //0
+        vectors.add(new LatLng(30.285204, -97.733750)); //1
+        vectors.add(new LatLng(30.284104, -97.733995)); //2
 
         Polyline line = mMap.addPolyline(new PolylineOptions()
-                .add( gdcBuilding, vectors.get(0))
+                .add( startLocation, vectors.get(0))
                 .add(vectors.get(0), vectors.get(1))
                 .add(vectors.get(1), vectors.get(2))
-                .add(vectors.get(2), vectors.get(3))
-                .add(vectors.get(3), vectors.get(4))
-                .add(vectors.get(4), vectors.get(5))
-                .add(vectors.get(5), vectors.get(6))
-                .add(vectors.get(6), vectors.get(7))
-                .add(vectors.get(7), vectors.get(8))
-                .add(vectors.get(8), vectors.get(9))
-                .width(7)
+                .add(vectors.get(2), texasExes)
+                .width(15)
                 .color(Color.RED)
         );
     }
 
-    private void createLawSchoolPolylines() {
+    private void createParlinPolylines() {
         ArrayList<LatLng> vectors = new ArrayList<LatLng>();
-        vectors.add(new LatLng(30.286285, -97.737116)); //0
-        vectors.add(new LatLng(30.285490, -97.737206)); //1
-        vectors.add(new LatLng(30.285427, -97.735863 )); //2
-        vectors.add(new LatLng(30.285483, -97.735383)); //3
-        vectors.add(new LatLng(30.285526, -97.735294)); //4
-        vectors.add(new LatLng(30.285564, -97.735201)); //5
-        vectors.add(new LatLng(30.285523, -97.735027)); //6
-        vectors.add(new LatLng(30.285481, -97.734973)); //7
-        vectors.add(new LatLng(30.285416, -97.734933)); //8
-        vectors.add(new LatLng(30.285394,  -97.734790)); //9 start of the roundabout
-        vectors.add(new LatLng(30.285444, -97.734766)); //10
-        vectors.add(new LatLng(30.285484,-97.734730)); //11
-        vectors.add(new LatLng(30.285529, -97.734675)); //12
-        vectors.add(new LatLng(30.285558, -97.734599)); //13
-        vectors.add(new LatLng(30.285555, -97.734527)); //14
-        vectors.add(new LatLng(30.285546, -97.734473)); //15
-        vectors.add(new LatLng(30.285531, -97.734410)); //16
-        vectors.add(new LatLng(30.285488, -97.734364)); //17
-        vectors.add(new LatLng(30.285457, -97.734331)); //18
-        vectors.add(new LatLng(30.285430, -97.734309)); //19
-        vectors.add(new LatLng(30.285411, -97.734296)); //20
-        vectors.add(new LatLng(30.285384, -97.734287)); //21 end of the roundabout
-
-        vectors.add(new LatLng(30.285277, -97.732737)); //22
-        vectors.add(new LatLng(30.285780, -97.732626)); //23
-        vectors.add(new LatLng(30.286053, -97.732535)); //24
-        vectors.add(new LatLng(30.286162, -97.732489)); //25
-        vectors.add(new LatLng(30.286324, -97.732356)); //26
-        vectors.add(new LatLng(30.286514, -97.732078)); //27
-        vectors.add(new LatLng(30.286643, -97.731920)); //28
-        vectors.add(new LatLng(30.287627, -97.731837)); //29
-        vectors.add(new LatLng(30.287741, -97.731776)); //30
-        vectors.add(new LatLng(30.287824, -97.731685)); //31
-        vectors.add(new LatLng(30.287877, -97.731511)); //32
-        vectors.add(new LatLng(30.287884, -97.731366)); //33
-        vectors.add(new LatLng(30.287886, -97.730690)); //34
-        vectors.add(new LatLng(30.288114, -97.730658)); //35
-        vectors.add(new LatLng(30.288140, -97.730671)); //36
-        vectors.add(new LatLng(30.288225, -97.730841)); //37
+        vectors.add(new LatLng(30.283484, -97.737428)); //0
+        vectors.add(new LatLng(30.283680, -97.739837)); //1
+        vectors.add(new LatLng(30.284875, -97.739721)); //2
 
         Polyline line = mMap.addPolyline(new PolylineOptions()
-                .add( gdcBuilding, vectors.get(0))
+                .add( startLocation, vectors.get(0))
                 .add(vectors.get(0), vectors.get(1))
                 .add(vectors.get(1), vectors.get(2))
-                .add(vectors.get(2), vectors.get(3))
-                .add(vectors.get(3), vectors.get(4))
-                .add(vectors.get(4), vectors.get(5))
-                .add(vectors.get(5), vectors.get(6))
-                .add(vectors.get(6), vectors.get(7))
-                .add(vectors.get(7), vectors.get(8))
-                .add(vectors.get(8), vectors.get(9))
-                .add(vectors.get(9), vectors.get(10))
-                .add(vectors.get(10), vectors.get(11))
-                .add(vectors.get(11), vectors.get(12))
-                .add(vectors.get(12), vectors.get(13))
-                .add(vectors.get(13), vectors.get(14))
-                .add(vectors.get(14), vectors.get(15))
-                .add(vectors.get(15), vectors.get(16))
-                .add(vectors.get(16), vectors.get(17))
-                .add(vectors.get(17), vectors.get(18))
-                .add(vectors.get(18), vectors.get(19))
-                .add(vectors.get(19), vectors.get(20))
-                .add(vectors.get(20), vectors.get(21))
-                .add(vectors.get(21), vectors.get(22))
-                .add(vectors.get(22), vectors.get(23))
-                .add(vectors.get(23), vectors.get(24))
-                .add(vectors.get(24), vectors.get(25))
-                .add(vectors.get(25), vectors.get(26))
-                .add(vectors.get(26), vectors.get(27))
-                .add(vectors.get(27), vectors.get(28))
-                .add(vectors.get(28), vectors.get(29))
-                .add(vectors.get(29), vectors.get(30))
-                .add(vectors.get(30), vectors.get(31))
-                .add(vectors.get(31), vectors.get(32))
-                .add(vectors.get(32), vectors.get(33))
-                .add(vectors.get(33), vectors.get(34))
-                .add(vectors.get(35), vectors.get(36))
-                .add(vectors.get(36), vectors.get(37))
-                .width(7)
+                .add(vectors.get(2), parlinHall)
+                .width(15)
                 .color(Color.RED)
         );
+
     }
 
     private void checkDestinationReached(LatLng userLatLng) {
 
+        double userLat = userLatLng.latitude;
+        double userLong = userLatLng.longitude;
+
         // reached the NOA Building A
-        if ((userLatLng.latitude >= 30.291 && userLatLng.latitude <= 30.291) &&
-            (userLatLng.longitude >= -97.737 && userLatLng.longitude <= -97.737)) {
-
+        if ((userLat >= 30.2911 && userLat <= 30.292) && (userLong <= -97.737 && userLong >= -97.738)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
 
-        } else if ((userLatLng.latitude >= 30.288 && userLatLng.latitude <= 30.288) &&
-                (userLatLng.longitude >= -97.73 && userLatLng.longitude <= -97.73)) {
-
+            //reached Parlin Hall
+        } else if ((userLat >= 30.28475 && userLat <= 30.285) && (userLong <= -97.73965 && userLong >= -97.7404)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
 
-        } else if ((userLatLng.latitude >= 30.284 && userLatLng.latitude <= 30.284) &&
-                ( userLatLng.longitude >= -97.740 && userLatLng.longitude <= -97.740)) {
-
+            //reached Texas Exes
+        } else if ( (userLat <= 30.2843 && userLat >= 30.2838) && (userLong <= -97.7339 && userLong >= -97.7345)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
         }
     }
 
-    private void getLastKnownLocation() {
-        Log.d("MapsActivity", "getLastKnownLocation: called");
-        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
-            @Override
-            public void onComplete(@NonNull Task<Location> task) {
-                if (task.isSuccessful()) {
-                    Location userLocation = task.getResult();
-                    Log.d("MapsActivity", "getLastKnownLocation: WORKED" + userLocation.getLongitude());
-                    LatLng userLoc = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
-                    mMap.addMarker(new MarkerOptions().position(userLoc).title("User"));
-//                    calculateDirections(userLocation);
-                } else {
-                    Log.d("MapsActivity", "getLastKnownLocation: FAILED");
-                }
-            }
-        });
-    }
+//    private void getLastKnownLocation() {
+//        Log.d("MapsActivity", "getLastKnownLocation: called");
+//        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+//            @Override
+//            public void onComplete(@NonNull Task<Location> task) {
+//                if (task.isSuccessful()) {
+//                    Location userLocation = task.getResult();
+//                    Log.d("MapsActivity", "getLastKnownLocation: WORKED" + userLocation.getLongitude());
+//                    LatLng userLoc = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+//                    mMap.addMarker(new MarkerOptions().position(userLoc).title("User"));
+////                    calculateDirections(userLocation);
+//                } else {
+//                    Log.d("MapsActivity", "getLastKnownLocation: FAILED");
+//                }
+//            }
+//        });
+//    }
 
 //    private void calculateDirections(Location userLocation) {
 //        Log.d("MapsActivity", "calculateDirections: entered the method");

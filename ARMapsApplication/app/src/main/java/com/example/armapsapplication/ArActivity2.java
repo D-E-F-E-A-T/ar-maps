@@ -24,6 +24,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
@@ -34,6 +35,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
@@ -45,14 +49,18 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Random;
 
 public class ArActivity2 extends AppCompatActivity implements SensorEventListener {
 
-    boolean debug = true;
-    TextView debugRotationText;
+    TextView debugText;
+    TextView destinationText;
 
     // Camera variables
     TextureView textureView;
@@ -79,12 +87,15 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
 
     // Location variables
     private LocationManager locationManager;
+    private LocationRequest locationRequest;
     private FusedLocationProviderClient mFusedLocationClient;
     private GeoApiContext mGeoApiContext = null;
 
+    int destNum = 2;
     int currIdx;
-    ArrayList<LatLng> checkpoints = new ArrayList<LatLng>();
+    private boolean reached = false;
     ArrayList<Float> arrowDirections = new ArrayList<Float>();
+
 
     // ------------------------------------------------------------------------------------------ //
 
@@ -100,33 +111,33 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
         imageView = (ImageView) findViewById(R.id.arrow);
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
-        TextView debugText = (TextView) findViewById(R.id.debugLatLng);
-        debugRotationText = (TextView) findViewById(R.id.debugRotation);
+        debugText = (TextView) findViewById(R.id.debugLatLng);
+        destinationText = (TextView) findViewById(R.id.destinationName);
+
 
         fillCheckpoints();
 
+        /*
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    Activity#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for Activity#requestPermissions for more details.
             return;
         }
 
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, new LocationListener() {
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1, 0.01f, new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
                     LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    checkDestinationReached(latLng);
+
                     String strLat = String.valueOf(location.getLatitude());
                     String strLng = String.valueOf(location.getLongitude());
 
                     debugText.setText(strLat + ", " + strLng);
+
+                    checkDestinationReached(latLng);
+                    checkpointReached(latLng);
                 }
 
                 @Override
@@ -139,16 +150,19 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
                 public void onProviderDisabled(String provider) { }
             });
         } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, new LocationListener() {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 0.01f, new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
                     LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                    checkDestinationReached(latLng);
+
 
                     String strLat = String.valueOf(location.getLatitude());
                     String strLng = String.valueOf(location.getLongitude());
 
                     debugText.setText(strLat + ", " + strLng);
+
+                    checkDestinationReached(latLng);
+                    checkpointReached(latLng);
                 }
 
                 @Override
@@ -161,7 +175,29 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
                 public void onProviderDisabled(String provider) { }
             });
         }
+        */
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        locationRequest = LocationRequest.create();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        mFusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+
+                Location location = locationResult.getLastLocation();
+                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+
+                if (!reached) {
+                    checkpointReached(latLng);
+                    checkDestinationReached(latLng);
+                }
+
+            }
+        }, getMainLooper());
 
         if (mGeoApiContext == null) {
             mGeoApiContext = new GeoApiContext.Builder()
@@ -211,14 +247,10 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
         synchronized (this) {
             if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 //                mGravity[0] = alpha * mGravity[0] + (1 - alpha) * sensorEvent.values[0];
-//                mGravity[1] = alpha * mGravity[1] + (1 - alpha) * sensorEvent.values[1];
-//                mGravity[2] = alpha * mGravity[2] + (1 - alpha) * sensorEvent.values[2];
                 mGravity = sensorEvent.values;
             }
             if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
 //                mGeomagnetic[0] = alpha * mGeomagnetic[0] + (1 - alpha) * sensorEvent.values[0];
-//                mGeomagnetic[1] = alpha * mGeomagnetic[1] + (1 - alpha) * sensorEvent.values[1];
-//                mGeomagnetic[2] = alpha * mGeomagnetic[2] + (1 - alpha) * sensorEvent.values[2];
                 mGeomagnetic = sensorEvent.values;
             }
 
@@ -227,45 +259,26 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
             boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
 
             if (success) {
-//                float orientation[] = new float[3];
-//                SensorManager.getOrientation(R, orientation);
-//                azimuth = (float) Math.toDegrees(orientation[0]);
-//                azimuth = (azimuth * 360) % 360;
-//
-//
-//                Animation anim = new RotateAnimation(-currentAzimuth, -azimuth, Animation.RELATIVE_TO_SELF, 0.5f);
-//                currentAzimuth = azimuth;
-//
-//                anim.setDuration(500);
-//                anim.setRepeatCount(0);
-//                anim.setFillAfter(true);
-
-//                imageView.startAnimation(anim);
                 float orientation[] = new float[3];
                 SensorManager.getOrientation(R, orientation);
                 azimuth = orientation[0];
 
                 float newRotation = 0.0f;
 
-                if (arrowDirections != null)
-                    newRotation = arrowDirections.get(currIdx) - (-azimuth*360/(2*3.14159f));
+                if (arrowDirections != null) {
+                    newRotation = 90f *  Math.round( (arrowDirections.get(currIdx) - (azimuth*360/(2*3.14159f))) / 90);
+                }
 
-                newRotation = (-azimuth*360/(2*3.14159f));
 
-                debugRotationText.setText( String.valueOf(newRotation));
                 imageView.setRotation(newRotation);
             }
         }
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
+    public void onAccuracyChanged(Sensor sensor, int i) { }
 
-    }
-
-    // ------------------------------------------------------------------------------------------ //
     // ------------------------------- CAMERA METHODS ------------------------------------------- //
-    // ------------------------------------------------------------------------------------------ //
 
     private void openCamera() throws CameraAccessException {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -329,15 +342,12 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
     private void startBackgroundThread() {
         handlerThread = new HandlerThread("Camera Background");
         handlerThread.start();
-
         backgroundHandler = new Handler(handlerThread.getLooper());
-
     }
 
     private void stopBackgroundThread() throws InterruptedException {
         handlerThread.quitSafely();
         handlerThread.join();
-
         backgroundHandler = null;
         handlerThread = null;
     }
@@ -394,88 +404,121 @@ public class ArActivity2 extends AppCompatActivity implements SensorEventListene
         }
     };
 
-    // ------------------------------------------------------------------------------------------ //
     // ------------------------------- LOCATION METHODS ----------------------------------------- //
-    // ------------------------------------------------------------------------------------------ //
 
     private void fillCheckpoints() {
         // Randomly pick a location
-        Random r = new Random();
-        int destNum = r.nextInt(3);
+//        Random r = new Random();
+//        destNum = r.nextInt(3);
 
-        if (debug)
-            destNum = 0;
-
-        if (destNum == 0)
+        if (destNum == 0) {
             fillNOAcheckpoints();
-//        else if (destNum == 1)
-//            fillLawCheckpoints();
-//        else
-//            fillHarryRansomCheckpoints();
+            destinationText.setText("Destination A");
+        }
+        else if (destNum == 1) {
+            fillTexasExesCheckpoints();
+            destinationText.setText("Destination B");
+        } else {
+            fillParlinCheckpoints();
+            destinationText.setText("Destination C");
+        }
 
         currIdx = 0;
+
     }
 
     private void fillNOAcheckpoints() {
-        checkpoints.add(new LatLng(30.286285, -97.737116)); //0
+        arrowDirections.add(0.0f);
         arrowDirections.add(270.0f);
-
-        checkpoints.add(new LatLng( 30.284742, -97.737287)); //1
-        arrowDirections.add(180.0f);
-
-        checkpoints.add(new LatLng(30.284971, -97.739283));  //2
-        arrowDirections.add(270.0f);
-
-        checkpoints.add(new LatLng(30.284093, -97.739358));  //3
-        arrowDirections.add(180.0f);
-
-        checkpoints.add(new LatLng(30.284128, -97.739790));  //4
-        arrowDirections.add(270.0f);
-
-        checkpoints.add(new LatLng(30.283906, -97.739857));  //5
-        arrowDirections.add(180.0f);
-
-        checkpoints.add(new LatLng(30.283992, -97.740941));  //6
-        arrowDirections.add(270.0f);
-
-        checkpoints.add(new LatLng(30.284295, -97.740922)); //7
         arrowDirections.add(0.0f);
     }
 
-    private void fillLawCheckpoints() {
 
+    private void fillParlinCheckpoints() {
+        arrowDirections.add(180.0f);
+        arrowDirections.add(270.0f);
+        arrowDirections.add(0.0f);
     }
 
-    private void fillHarryRansomCheckpoints() {
-
+    private void fillTexasExesCheckpoints() {
+        arrowDirections.add(180.0f);
+        arrowDirections.add(90.0f);
+        arrowDirections.add(180.0f);
     }
 
+    private void checkpointReached(LatLng userLatLng) {
+        double userLat = userLatLng.latitude;
+        double userLong = userLatLng.longitude;
 
-    private void checkCheckpointReached(LatLng userLatLng) {
+        if (destNum == 0) {
+            checkNOAcheckpoints(userLat, userLong);
+        } else if (destNum == 1) {
+            checkTexasExesCheckpoints(userLat, userLong);
+        } else if (destNum == 2) {
+            checkParlinCheckpoints(userLat, userLong);
+        }
+    }
+
+    private void checkNOAcheckpoints(double userLat, double userLong) {
+        if (currIdx == 0) {
+            if ((userLat >= 30.28945 && userLat <= 30.2897) &&
+                (userLong <= -97.7366 && userLong >= -97.737))
+                currIdx++;
+        } else if (currIdx == 1) {
+            if ((userLat <= 30.2898 && userLat >= 30.2894) &&
+                (userLong <= -97.7379 && userLong >= -97.7382))
+                currIdx++;
+        }
+    }
+
+    private void checkParlinCheckpoints(double userLat, double userLong) {
+        if (currIdx == 0) {
+            if ((userLat >= 30.2831 && userLat <= 30.2837) &&
+                (userLong >= -97.7378 && userLong <= -97.737)) {
+                currIdx++;
+            }
+        } else if (currIdx == 1) {
+            if ((userLat <= 30.2841 && userLat >= 30.2835) &&
+                (userLong <= -97.7396 && userLong >= -97.74))
+                currIdx++;
+        }
+    }
+
+    private void checkTexasExesCheckpoints(double userLat, double userLong) {
+        if (currIdx == 0) {
+            if ((userLat >= 30.28535 && userLat <= 30.2857) &&
+                (userLong >= -97.7374 && userLong <= -97.7369))
+                currIdx++;
+        } else if (currIdx == 1) {
+            if ((userLat <= 30.2854 && userLat >= 30.2850) &&
+                (userLong <= -97.73365 && userLong >=  -97.734))
+                currIdx++;
+        }
 
     }
 
     private void checkDestinationReached(LatLng userLatLng) {
 
+        double userLat = userLatLng.latitude;
+        double userLong = userLatLng.longitude;
+
         // reached the NOA Building A
-        if ((userLatLng.latitude >= 30.291 && userLatLng.latitude <= 30.291) &&
-                (userLatLng.longitude >= -97.737 && userLatLng.longitude <= -97.737)) {
-
+        if ((userLat >= 30.2911 && userLat <= 30.292) && (userLong <= -97.737 && userLong >= -97.738)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
 
-        } else if ((userLatLng.latitude >= 30.288 && userLatLng.latitude <= 30.288) &&
-                (userLatLng.longitude >= -97.73 && userLatLng.longitude <= -97.73)) {
-
+            //reached Parlin Hall
+        } else if ((userLat >= 30.28475 && userLat <= 30.285) && (userLong <= -97.73965 && userLong >= -97.7404)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
 
-        } else if ((userLatLng.latitude >= 30.284 && userLatLng.latitude <= 30.284) &&
-                ( userLatLng.longitude >= -97.740 && userLatLng.longitude <= -97.740)) {
-
+            //reached Texas Exes
+        } else if ( (userLat <= 30.2843 && userLat >= 30.2836) && (userLong <= -97.7339 && userLong >= -97.7345)) {
+            reached = true;
             Intent startIntent = new Intent(getApplicationContext(), DestinationActivity.class);
             startActivity(startIntent);
-
         }
     }
 }
